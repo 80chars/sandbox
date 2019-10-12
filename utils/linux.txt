@@ -1,0 +1,854 @@
+performance utilities:
+strace
+iostat
+vmstat
+code profiling with gprof
+
+unhardening:
+
+1) modify password-auth and/or system-auth to have
+password required pam_passwdqc.so retry=3  min=disabled,5,5,5,5 max=40 similar=permit enforce=enone random=0
+2) edit /etc/ssh/ssh_config
+ConnectTimeout 0
+3) edit /etc/profile to include . in the path
+
+
+Configuring kernal parameters:
+sysctl
+/etc/sysctl.conf
+/proc/kernel
+/proc/sys/kernel/sem
+
+service abrtd status 
+# services rhel 7
+/etc/systemd/system/multi-user.target.wants
+service --status-all
+/etc/abrt/abrt.conf
+/proc/sys/kernel/core_pattern
+
+=====================
+proc
+=====================
+/proc/scsi/scsi  # scsi devs that are currently attached
+/proc/interrupts
+/proc/ioports
+/proc/dma
+/proc/meminfo
+/proc/cpuinfo
+/proc/cmdline
+
+====================================
+ulimit
+====================================
+ulimit changes size of the core and other stuff
+enabling core dumps for everybody
+/etc/security/limits.conf
+ulimit -a
+ulimit -c unlimited
+ulimit -u 2000 changing the number of processes to 2000
+# automatated core tool
+
+
+
+linux            Solaris
+------------------
+tcpdump     |    snoop
+objdump     |    dump
+example
+tcpdump -nn -x  src 10.8.126.75 and dst 10.8.126.240 and port 1050
+tcpdump -n dst host 192.168.1.1
+
+=========================
+---- init
+=========================
+what starts at startup
+chkconfig
+starting a service
+service httpd start
+/etc/init contains startup services.
+
+################################################################################
+add tcpdump account to use tcpdump
+
+======================
+# adding users
+======================
+/usr/sbin/groupadd -g 77 tcpdump
+
+======================
+# ueradd
+======================
+# test_user shall be a member of test_grp
+useradd -G test_grp -c "test user" test_user
+useradd -r # create system user - no expiration for the account with ranged IDs
+useradd -M # supress home dir creation
+useradd -e 2014-03-27 aparna # expires in March
+useradd -r # create system account
+/usr/sbin/useradd -u 77 -g 77 -s /sbin/nologin -M -r -d /var/arpwatch  tcpdump 
+/etc/default/useradd
+
+
+======================
+gpasswd
+======================
+gpasswd -a user group # gpassword can be used to add users to a group
+chgrp
+groupdel
+======================
+# groupmod 
+======================
+groupmod -n renaming group
+################################################################################
+
+
+======================
+# network
+======================
+network config
+/etc/sysconfig/network-scripts/ifcfg-eth6
+DEVICE="eth6"
+BOOTPROTO="static"
+HWADDR="00:..."
+NM_CONTROLLED="yes"
+ONBOOT="yes"
+TYPE="Ethernet"
+IPADDR=10.8...
+GATEWAY=10.8...
+NETMASK=255.255.255.0
+
+having to IP addresses on the same if in an if file:
+IPADDR2=192.168.0.55
+PREFIX2=24
+check with ip a instead of ifconfig
+
+flashing ARP table on a router 
+ping -I 10.101.15.116 10.101.15.240
+
+
+
+# accept all from this source IP
+iptables -A INPUT -p udp -s 192.168.1.34 -j ACCEPT
+=====================
+route 
+=====================
+route del -net 10.0.0.0 netmask 255.0.0.0 dev eth4
+route del default
+route add default gw 10.8.104.254 eth6
+route add -net 192.168.1.0 netmask 255.255.255.0 gw 192.168.1.254
+# display a route
+ip route get to 10.x.xxx.x from  10.8.126.176
+ss - network data
+
+ifconfig eth6 10.8.104.56
+ifconfig eth6 up
+route -n is equivalent to ip route show
+ip route show shows main routing table
+
+ip route show local
+# the local routing table is for broadcast addresses on link layers,
+# network address translation, and locally hosted IP addresses.
+# creating a new table
+echo 7 special >> /etc/iproute2/rt_tables
+ip route add table special 10.1.1.1 via 10.8.126.176
+ip route show table special
+
+routing is driven by "rule table". To see the table
+ip rule show
+e.g.
+ip rule show
+0:      from all lookup local 
+32765:  from 10.x.xxx.x lookup ctr1 
+32766:  from all lookup main 
+32767:  from all lookup default 
+This means try local table first then ctr1 then main then default
+to see local table enter
+ip route show table local
+to see table ctr1 enter
+ip route show table ctr1
+to see main enter
+ip route show
+
+ss ~= netstat
+
+========
+netstat 
+========
+netstat -i # interface statistics
+netstat -s # statistics by protocol
+
+==========
+mount 
+=========
+mount /dev/cdrom   /media/cdrom
+mount -t iso9660 -o ro /dev/cdrom /media/cdrom0
+mount -o remount,rw /dev/foo /dir  # remount /dev/foo on /idr
+/proc/mounts # currently mounted FS
+
+============ 
+---- Packaging 
+============
+rpm -qa - list all installed packages
+rpm -ivh install verbose show progress
+rpm --import /mnt/RPM-GPG-KEY-redhat-release # add publich keys to verify signatures
+rpm -U install or upgrade
+rpm -V verify
+rpm -i --nodeps install without verifying deps
+rpm -qip rpm.rpm # show info for package rpm.rpm
+rpm --checksig gdb-7.2-48.el6.x86_64.rpm # check signature
+rpm -K gdb-7.2-48.el6.x86_64.rpm # check signature
+rpm -qpR gdb-7.2-48.el6.x86_64.rpm # report dependencies of the package
+https://www.unixarena.com/2013/08/linux-interview-questions-package.html
+/usr/share/doc # directory with description of installed packages
+/etc/yum.repos.d # describes how yum gets packages
+yum deplist # list package dependecies
+yum whatprovides # == rpm -qf
+yum list installed
+yum list available
+yum provides <file name>
+yum search <pkg_name>
+yumdownloader --resolve gdb # download gdb and all deps
+dpkg-reconfigure # reconfigure all packages that have prev. been installed
+dpkg -s # shows package status/whether package is installed 
+dpkg -c <pack> # list the content of package <pack>
+dpkg --get-selections # show all packages installed
+dpkg -l # list installed packages
+dpkg -C # list partialy installed packages
+apt-cache unmet
+apt-cache stats # show information about local repo
+apt-cache pkgnames # list all available packages
+apt-cache depends <package_name> # list dependecies for package_name
+apt-cache search <pattern> # search for a package
+apt-cache package package
+apt-cache show <pkgname> # show info about package <pkgname>
+apt-cache showpkg
+apt-get source <package_name> # download source
+apt-get purge # == dpkg -P
+apt-get install <package_name> -q # quite
+apt-get clean
+apt-get autoclean # cleans local cache of package from directory /var/cache/apt
+apt-get install -y <package_name> # yes to all questions
+apt-get search <package_name>
+apt-get install -s # simulate package installion
+apt-get repository list
+apt-get upgrade # upgrade all packages or list avaiable updates?
+apt-get update # downloads the package lists from the repositories and "updates" them to get information on the newest versions of packages and their dependencies
+apt-get download ???
+apt-get dist-upgrade
+aptitude search
+
+--- 
+set clobbing 
+---
+set -o noclobber # will not overwrite files
+
+------------
+ps 
+------------
+ps -eo "%p %c" pid and names
+ps -eo pid,lstart,cmd detailed process start time
+
+---- iptables:
+delete a rule:
+iptables -L --line-numbers
+iptables -D INPUT 3
+icmp control:
+iptables -A INPUT -p icmp ! --icmp-type timestamp-request -j ACCEPT
+iptables -A INPUT -p icmp ! --icmp-type redirect -j ACCEPT
+iptables -A INPUT -p icmp  --icmp-type redirect -s 10.106.55.254 -j ACCEPT
+multicast rules
+-A INPUT -i eth2 -p udp -m addrtype --dst-type MULTICAST -m multiport --dports ncrx_iz_mcast -j ACCEPT -m comment --comment "zcrule_in_izmc"
+iptables -A INPUT -p udp -i eth2 -j DROP
+number of processes on Linux
+cat /proc/cpuinfo | grep processor | wc -l
+ping -b
+
+valgrind --leak-check=yes --show-possibly-lost=no --log-file=/home/swuser/valgrind.txt
+
+==================
+---- Swap: 
+==================
+swapon -s -- status
+swapon
+swapoff,
+mkswap
+
+
+==================
+---- df system type 
+==================
+df -T # print file system type
+df -i # inodes
+
+==================
+file 
+==================
+file -s <file name>
+
+==================
+---- Archives 
+==================
+=============
+dd 
+=============
+Create a file with dd
+dd if=/dev/zero of=/swap.swp bs=1024 count=131072
+
+=============
+cpio 
+=============
+find . | cpio -pd /tmp/new_dir  # copy-pass mode find in current dir and copy all to /tmp/new_dir creating subdirs
+find . | cpio -o > my_cpio.cpio # create cpio arch
+cpio --list < my_cpio.cpio # table of contexts (or -t)
+
+===============
+tar
+===============
+tar cfz create zipped tar
+tar cfr append files to an archive
+tar cfA concatinate archives
+tar cfj create bzip2 arch
+
+==============
+zip 
+=============
+bunzip2
+
+
+==================
+---- vi 
+==================
+commands: ZZ :e! a o
+
+
+=============
+links 
+=============
+[root@OOTAA embms]# ln -s /usr/share/zoneinfo/Etc/GMT+5 /etc/localtime
+
+
+================
+time 
+================
+---- time
+#change local timezone
+timedatectl set-timezone EST
+or
+unlink /etc/localtime
+#enable ntp
+timedatectl set-ntp true
+#list timezones
+timedatectl list-timezones
+/etc/localtime
+================
+time 
+================
+date +%H print current hour
+date +%M print current min.
+date -d "1974-01-04" # display date provided
+Fri Jan  4 00:00:00 EST 1974
+date +%A
+Thursday
+ date +%D
+06/21/18
+ date -u # print UTC
+
+
+====================
+tzselect 
+====================
+tzselect # select timezone
+
+
+---- time /cron 
+at -f /home/cap075/tmp/hello.sh noon
+at time spec:
+at teatime
+at 1600 @TODO
+
+system crontab must have user name
+every 7 days with 7 min. delay run /bin/sh with argument /home/sathiya/backup.sh, give this job name test.daily
+7       15      test.daily      /bin/sh /home/sathiya/backup.sh
+# run-parts shall run everything in the directory
+run-parts /etc/cron.hourly
+crontab -r # remove crontab entry
+crontab -e # open crontab editor
+5 * * * * = ever hour day at exactly 5min past the hour
+ */5 * * * * = evey 5th minute so 00:05, 00:10, 00:15 and so on
+
+==============
+anacron 
+==============
+anacron -T  # test anacron config
+/etc/anacrontab
+
+===============
+fuser 
+===============
+fuser /rel/bin/ad-hlr
+fuser -v fuser /rel/bin/ad-hlr
+fuser -TERM /rel/bin/ad-hlr
+fuser 22/tcp
+
+
+
+---- shell bash
+When bash is invoked as an interactive login shell it reads and executes commands from the /etc/profile. Then Bash will try in order to execute ONLY the first file exists and is readable of the following:
+1..bash_profile
+2..bash_login
+3..profile
+.bash_logout
+.bash_profile
+.bashrc
+
+==================
+---- text processing 
+==================
+cat -b number non-blank lines
+===============
+nl 
+===============
+nl - number lines
+nl -b # border style e.g nl -b a == order all
+
+
+===============
+---- 
+===============
+pwconv
+pwunconv
+
+===============
+chage 
+===============
+chage -l swuser # list swuser account attributes
+chage -E -I and others
+cahge -W 10 -M 60 # force modify in 60 days warning within 10 days
+
+==================
+# quota 
+==================
+to enable quota edit 
+/etc/fstab add usrquota,grpquota
+run quotacheck -cug /home
+run quotaon ?
+run edquota <username>
+quota # show disk usage of a user
+
+===================
+shutdown 
+===================
+shutdown -k # do not shutdown - just send a warning
+shutdown -r 01:00 .Up again soon.. reboot at 1 am
+
+
+# read on
+/etc/resolv.conf
+GPT
+CIDR
+===================
+hwclock 
+===================
+hwclock
+hwclock --localtime vs. -u (--utc) # set the software clock
+hwclock --hctosys (or -s) # set sys time to hardware clock
+hwclock --systohc (or -w) # set hardware clock to sys time
+hwclock --set --date 8/11/2013 # set hardware clock manually
+
+
+###################################
+fstab 
+###################################
+/etc/fstab
+also
+/etc/mtab # currently mounted FS
+
+correct login names
+dmesg
+mkdir
+touch
+
+#####################################
+fsck
+#####################################
+fsck -p # also repair
+
+top
+> blah - creates an empty blah file
+/proc/sys/net/ipv4/ip_forward
+tcpdchk
+chown a.b fn
+SGID of dir -- effect of
+modprobe -r modprobe insmod modinfo
+hwinfo
+dmesg, dmesg -n 1
+chkconfig, chkconfig --level 35 ntpd on
+/etc/named.conf
+
+================================
+================================
+/etc/aliases 
+/etc/aliases.db # binary form of aliases DB
+
+
+======================
+networking 
+=====================
+private subnets:
+10.0.0.0 - 10.255.255.255 (10/8 prefix)
+172.16.0.0 - 172.31.255.255 (172.16/12 prefix)
+192.168.0.0 - 192.168.255.255 (192.168/16 prefix)
+
+lrpm
+id
+udev
+
+#############################
+---- start up System V 
+#############################
+service network restart
+service iptables stop
+
+#############################
+# systemd 
+#############################
+/etc/systemd - directory with config. files
+---- services
+systemctl
+systemctl get-default
+/etc/systemd/system/default.target is a sym. link
+systemctl isolate multi-user.target # == init 3
+systemctl list-unit-files --type=service
+systemctl list-unit-files --type=target # list all target
+systemctl set-default rescue.target # == set to init 0
+
+====================
+====================
+journalctl -b -1 # since last boot
+journalctl --list-boots   # list boots
+journalctl -u ntpd # by unit
+journalctl -n 50 --since "1 hour ago"
+journalctl _HOSTNAME=nmhost01
+journalctl -p "err"
+journalctl -k # only kernel messages
+journalctl -l # show full fields (default)
+journalctl -a # show all fields
+/etc/systemd/journald.conf # config file
+systemd-journal group, which can access the journal
+
+journalctl _UDEV_SYSNAME=  # ???
+
+wall
+
+===========================
+GRUB legacy 
+===========================
+# installing
+on MBR:
+grub-install -v
+grup-install /dev/hda installs grub on MBR grub-install /dev/hda1 will install on first part.
+on EFI:
+on Fedora efibootmgr -c --disk /dev/sdX
+updating
+edit /boot/grup/grub.conf or /boot/grub/menu.lst
+
+===========================
+GRUB 2 
+===========================
+#installing
+grub2-install or grub-install
+grub2-install --version
+# parameters:
+GRUB_DEFAULT
+GRUB_TIMEOUT=23
+#edit
+/etc/default/grub  # defiines default GRUB 2 behavior
+#and stuff in
+/etc/grub.d/
+run
+grub-mkconfig or
+grub2-mkconfig -o /boot/grub2/grub.cfg or
+update-grub
+
+
+screen
+getent
+source
+
+=========================
+ntpq 
+=========================
+ntpq -p  # ntp statistics
+
+
+logrotate
+
+===========================
+logger 
+===========================
+logger -f /var/log/myapp.log log contents of the file
+logger -s "test msg" log on the screen as well
+logger -p local0.crit -t HOSTIDM "CRIT" critical message with tag HOSTIDM
+logger -u # use sockets
+logger -i # log process ID
+
+ip
+netcat
+ping6
+traceroute6
+tracepath6
+======================
+who 
+=====================
+/var/run/utmp # who data
+
+w 
+last
+chattr
+
+=============
+whereis 
+=============
+whereis -m, whereis -b whereis -s, whereis
+
+
+test -f vs test -e
+env -u FOOBAR./myscript - supress FOOBAR
+
+==============
+SQL 
+=============
+SELECT order_type,COUNT(*) FROM orders GROUP BY order_type;
+
+< vs <<
+
+=============
+ls and stats 
+=============
+ls -i  # list inodes
+ls -X order by extention
+ls -t order by time
+stat blah.sh 4700/-rws------  4 == u+s
+
+
+
+===============
+uniq 
+===============
+uniq -i # ignore case
+uniq -d # print duplicates
+
+===============
+jobs 
+===============
+jobs -l # sldo show proc id
+
+==============
+ldconfig 
+==============
+/etc/ld.so.cache # chaced libraries?
+
+
+==============
+sudoers 
+==============
+http://www.softpanorama.org/Access_control/Sudo/sudoer_file_examples.shtml
+# swuser can run tcpdump
+swuser ALL=/usr/sbin/tcpdump
+ jen can run anything on all machines except the ones
+# in the "SERVERS" Host_Alias
+jen		ALL, !SERVERS = ALL
+# joe may su only to operator
+joe		ALL = /usr/bin/su operator
+
+# pete may change passwords for anyone but root on the hp snakes
+pete		HPPA = /usr/bin/passwd [A-z]*, !/usr/bin/passwd root
+
+# jose and xena can run any commands from /usr/bin and bin
+jose,xena ALL=/usr/bin,/bin
+
+# sudoers editor
+visudo
+# sudo log
+/var/log/secure
+
+==============
+lsof 
+==============
+# lsof: list network connections
+lsof -i
+# lsof list ftp connections
+lsof -i :ftp
+# list ssh connections
+lsof -i :ssh
+
+==============
+ssh 
+=============
+~/.ssh/config # overrides /etc/ssh/sshd_config
+
+
+================
+locate 
+================
+locate -i ls or locate --ignore-case # locate file ls
+
+================
+du 
+================
+du -h --summarize # go only one dir done and human readable
+
+================
+nice /renice 
+================
+compare nice -5 ls and nice --5 ls
+renice uses -n though
+
+=================
+cut 
+================
+cut -c 2,3 charcater 2 and 3
+
+===================
+tune2fs 
+===================
+tune2fs -l /dev/sda list superblock info
+tune2fs -c 10 /dev/sda  set mount count to -1
+tune2fs -m 6 /dev/sda set reserved disk space to 6%
+tune2fs -T now /dev/sda set last FS check to current time
+tune2fs -i 200 /dev/sda run fsck in 200 days
+
+===================
+xargs 
+===================
+find . -name "foo*" -print0 | xargs -0 gedit # processing files with spaces print0 must go with -0
+ls -1 *.txt | xargs -n 2 echo # two files per line
+find . -name "*.bak" -print0 | xargs -0 -I file mv file ~/old.files # aliasing with xargs
+
+
+==================
+grep 
+==================
+grep -o # print only matching part who needs this?
+grep -n # Prefix  each  line  of  output  with  the  1-based  line  number within its input file.
+grep .a[^b].a myfile # [^b] not b - reg ex.
+
+
+==================
+LVM 
+==================
+lvscan # scan for logical volumes
+vgcreate # create logical group
+pvcreate # init logincal volume
+
+==================
+tr 
+==================
+tr -d '\r' < infile > outfile  # remove trailing CR
+
+==================
+pr 
+==================
+pr -l60 draft # 60 lines per page
+
+==================
+nmap 
+==================
+nmap 192.168.0.9 # scan a single IP
+nmap -sT # mornitor port usage
+nmap -O host1.target.com host2.target.com # says which OS is running
+
+=================
+passwd 
+=================
+passwd -l # lock password
+passwd -u # unlock password
+passwd -d # make an account passwordless
+passwd -e # expire password now
+passwd -S swuser # status of the account
+
+=================
+usermod 
+=================
+# change comments
+
+# change directory
+
+# change expiry
+
+# change primary group
+
+# lock acout
+
+# change loging name
+
+# move content of the home directory
+
+# lock account if password not changed after
+
+usermod -f 
+usermod -aG staff gmyrick # add gmyrick to staff group
+ 
+
+
+===================
+X 
+===================
+xdpyinfo # display information utility for X
+xwinfo
+# where fonts are? /usr/share/X11/fonts TODO
+# what is AccessX? TODO
+gdm / kdm # they provide login screen
+
+==================
+lpr (line printer) 
+==================
+lpr -r # remove the original file
+lpr -m # send email after printing
+lpr -h # suppress headers
+lpc - elemnentary interfance similar to lpr (line printer control program)
+/etc/hosts.lpd # trusted hosts that can use lpr
+
+===================
+CUPS 
+==================
+/var/spool/cups
+lpadm # confiugre CUPS
+/etc/cups # config dir
+
+====================
+GPG 
+====================
+gpg -keyserver hkp://example.com -recv-key 63B4835B # get a key
+.~/.gnupg/ # pgp config dir.
+
+===================
+tcpwrappers 
+===================
+ALL: 192.168.1.7 # /etc/hosts.allow format
+in.telnetd : /etc/telnet.hosts # read file for telnet
+
+
+===================
+find 
+===================
+find / -type l
+
+==================
+seq 
+==================
+seq -s';' -w 1 10
+01;02;03;04;05;06;07;08;09;10
+
+==================
+declare -f 
+==================
+print all available functions
+
+
+$@ all parameters
+$_ Special variable set to final argument of previous command executed, basically the last argument
+
+=================
+
+/etc/issue.net # telnet loging banner
+=================
